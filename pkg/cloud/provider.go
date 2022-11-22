@@ -1,5 +1,6 @@
 package cloud
 
 const (
-	ProviderAWS = "AWS"
+	ProviderAWS      = "AWS"
+	ProviderNIFCLOUD = "NIFCLOUD"
 )

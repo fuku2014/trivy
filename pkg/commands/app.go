@@ -10,6 +10,7 @@ import (
 	"time"
 
 	awsScanner "github.com/aquasecurity/defsec/pkg/scanners/cloud/aws"
+	nifcloudScanner "github.com/aquasecurity/defsec/pkg/scanners/cloud/nifcloud"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/aquasecurity/trivy-db/pkg/metadata"
 	awscommands "github.com/aquasecurity/trivy/pkg/cloud/aws/commands"
+	nifcloudcommands "github.com/aquasecurity/trivy/pkg/cloud/nifcloud/commands"
 	"github.com/aquasecurity/trivy/pkg/commands/artifact"
 	"github.com/aquasecurity/trivy/pkg/commands/server"
 	"github.com/aquasecurity/trivy/pkg/fanal/analyzer"
@@ -87,6 +89,7 @@ func NewApp(version string) *cobra.Command {
 		NewSBOMCommand(globalFlags),
 		NewVersionCommand(globalFlags),
 		NewAWSCommand(globalFlags),
+		NewNIFCLOUDCommand(globalFlags),
 	)
 	rootCmd.AddCommand(loadPluginCommands()...)
 
@@ -860,6 +863,67 @@ The following services are supported:
 	cmd.SetFlagErrorFunc(flagErrorFunc)
 	awsFlags.AddFlags(cmd)
 	cmd.SetUsageTemplate(fmt.Sprintf(usageTemplate, awsFlags.Usages(cmd)))
+
+	return cmd
+}
+
+func NewNIFCLOUDCommand(globalFlags *flag.GlobalFlagGroup) *cobra.Command {
+
+	nifcloudFlags := &flag.Flags{
+		AWSFlagGroup:     flag.NewAWSFlagGroup(),
+		CloudFlagGroup:   flag.NewCloudFlagGroup(),
+		MisconfFlagGroup: flag.NewMisconfFlagGroup(),
+		RegoFlagGroup:    flag.NewRegoFlagGroup(),
+		ReportFlagGroup:  flag.NewReportFlagGroup(),
+	}
+
+	services := nifcloudScanner.AllSupportedServices()
+
+	cmd := &cobra.Command{
+		Use:     "nifcloud [flags]",
+		Aliases: []string{},
+		Args:    cobra.ExactArgs(0),
+		Short:   "scan nifcloud account",
+		Long: fmt.Sprintf(`Scan a NIFCLOUD account for misconfigurations.
+
+The following services are supported:
+- %s
+`, strings.Join(services, "\n- ")),
+		Example: `  # basic scanning
+  $ trivy nifcloud --region jp-east-1
+
+  # limit scan to a single service:
+  $ tmivy nifcloud --region jp-east-1 --service hatoba
+
+  # limit scan to multiple services:
+  $ trivy nifcloud --region jp-east-1 --service hatoba --service rdb
+
+  # force refresh of cache for fresh results
+  $ trivy nifcloud --region jp-east-1 --update-cache
+`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := nifcloudFlags.Bind(cmd); err != nil {
+				return xerrors.Errorf("flag bind error: %w", err)
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts, err := nifcloudFlags.ToOptions(cmd.Version, args, globalFlags, outputWriter)
+			if err != nil {
+				return xerrors.Errorf("flag error: %w", err)
+			}
+			if opts.Timeout < time.Hour {
+				opts.Timeout = time.Hour
+				log.Logger.Debug("Timeout is set to less than 1 hour - upgrading to 1 hour for this command.")
+			}
+			return nifcloudcommands.Run(cmd.Context(), opts)
+		},
+		SilenceErrors: true,
+		SilenceUsage:  true,
+	}
+	cmd.SetFlagErrorFunc(flagErrorFunc)
+	nifcloudFlags.AddFlags(cmd)
+	cmd.SetUsageTemplate(fmt.Sprintf(usageTemplate, nifcloudFlags.Usages(cmd)))
 
 	return cmd
 }

@@ -46,7 +46,8 @@ type FlagGroup interface {
 }
 
 type Flags struct {
-	AWSFlagGroup           *AWSFlagGroup
+	AWSFlagGroup *AWSFlagGroup
+	//NIFCLOUDFlagGroup      *NIFCLOUDFlagGroup
 	CacheFlagGroup         *CacheFlagGroup
 	CloudFlagGroup         *CloudFlagGroup
 	DBFlagGroup            *DBFlagGroup
@@ -68,6 +69,7 @@ type Flags struct {
 type Options struct {
 	GlobalOptions
 	AWSOptions
+	//NIFCLOUDOptions
 	CacheOptions
 	CloudOptions
 	DBOptions
@@ -247,6 +249,9 @@ func (f *Flags) groups() []FlagGroup {
 	if f.AWSFlagGroup != nil {
 		groups = append(groups, f.AWSFlagGroup)
 	}
+	//if f.NIFCLOUDFlagGroup != nil {
+	//	groups = append(groups, f.NIFCLOUDFlagGroup)
+	//}
 	if f.K8sFlagGroup != nil {
 		groups = append(groups, f.K8sFlagGroup)
 	}
@@ -316,6 +321,10 @@ func (f *Flags) ToOptions(appVersion string, args []string, globalFlags *GlobalF
 	if f.AWSFlagGroup != nil {
 		opts.AWSOptions = f.AWSFlagGroup.ToOptions()
 	}
+
+	//if f.NIFCLOUDFlagGroup != nil {
+	//	opts.NIFCLOUDOptions = f.NIFCLOUDFlagGroup.ToOptions()
+	//}
 
 	if f.CloudFlagGroup != nil {
 		opts.CloudOptions = f.CloudFlagGroup.ToOptions()
